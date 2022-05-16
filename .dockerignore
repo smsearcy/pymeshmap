@@ -1,0 +1,5 @@
+.*_cache
+*.egg-info
+.env
+.git
+venv

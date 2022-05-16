@@ -1,0 +1,26 @@
+services:
+  web:
+    container_name: meshinfo-web
+    build: .
+    restart: "no"
+    environment:
+      - MESH_INFO_ENVIRONMENT=development
+      - MESH_INFO_DATA_DIR=/var/lib/mesh-info
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/opt/mesh-info/src:Z
+      - data-dir:/var/lib/mesh-info
+
+  migrations:
+    container_name: meshinfo-migrations
+    build: .
+    command: alembic upgrade head
+    restart: "no"
+    environment:
+      - MESH_INFO_DATA_DIR=/var/lib/mesh-info
+    volumes:
+      - data-dir:/var/lib/mesh-info
+
+volumes:
+  data-dir:
