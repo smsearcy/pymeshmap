@@ -4,7 +4,7 @@ FROM python:3.10-bullseye
 # but I don't really want to install that in this container
 # (need to figure out another way to test this locally w/ containers - start another service?)
 RUN apt-get update && \
-    apt-get install -y libpq-dev librrd-dev && \
+    apt-get install -y libpq-dev librrd-dev pre-commit && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/mesh-info/src
@@ -20,6 +20,7 @@ COPY dev-requirements.txt /tmp/dev-requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt -r /tmp/dev-requirements.txt
 
 COPY . .
+RUN pip install --no-cache-dir -e /opt/mesh-info/src
 
 EXPOSE 8000
 
