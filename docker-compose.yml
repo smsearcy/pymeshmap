@@ -1,0 +1,45 @@
+# *** NOTE: *** This file is for local development, not running in production!!!
+# FIXME: create example for what this should look like in production
+
+services:
+  base:
+    build:
+      context: .
+      args:
+        DEVEL: "yes"
+    image: mesh-info:docker-compose
+    volumes:
+      - data-dir:/var/lib/mesh-info:z
+
+  migration:
+    image: mesh-info:docker-compose
+    pull_policy: never
+    command: python -m alembic upgrade head
+    volumes_from:
+      - base
+
+  collector:
+    image: mesh-info:docker-compose
+    pull_policy: never
+    # FIXME: it probably won't understand localnode.local.mesh...
+    command: python -m meshinfo collector
+    volumes_from:
+      - base
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+
+  web:
+    image: mesh-info:docker-compose
+    pull_policy: never
+    command: python -m meshinfo web --workers 1
+    volumes_from:
+      - base
+    ports:
+      - "8000:8000"
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+
+volumes:
+  data-dir:
