@@ -4,6 +4,7 @@ from operator import attrgetter
 
 from pyramid.request import Request, Response
 from pyramid.view import view_config, view_defaults
+from sqlalchemy import sql
 from sqlalchemy.orm import Session
 
 from ..models import Node
@@ -16,8 +17,10 @@ class NodeListViews:
         dbsession: Session = request.dbsession
 
         # TODO: parameters to determine which nodes to return
-        query = dbsession.query(Node).filter(Node.status != NodeStatus.INACTIVE)
-        self.nodes: list[Node] = sorted(query.all(), key=attrgetter("name"))
+        nodes = dbsession.scalars(
+            sql.select(Node).where(Node.status != NodeStatus.INACTIVE)
+        ).all()
+        self.nodes: list[Node] = sorted(nodes, key=attrgetter("name"))
         self.request = request
 
     @view_config(match_param="view=table", renderer="pages/nodes.jinja2")

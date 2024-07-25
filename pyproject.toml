@@ -34,7 +34,7 @@ dependencies = [
     "python-dotenv ~= 0.20",
     "rich ~= 13.3",
     "structlog ~= 23.2",
-    "sqlalchemy ~= 1.4",
+    "sqlalchemy ~= 2.0",
     "transaction ~= 3.0",
     "zope.sqlalchemy ~= 1.6",
     "rrdtool-bindings>=0.2.0",
@@ -61,7 +61,6 @@ module = [
     "hupper.*",
     "pyramid.*",
     "rrdtool.*",
-    "sqlalchemy.*",
     "transaction.*",
     "zope.*",
 ]

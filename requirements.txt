@@ -8,7 +8,7 @@ async-timeout==4.0.3; python_version < "3.11"
 attrs==23.2.0
 environ-config==23.2.0
 frozenlist==1.4.1
-greenlet==3.0.3; (platform_machine == "win32" or platform_machine == "WIN32" or platform_machine == "AMD64" or platform_machine == "amd64" or platform_machine == "x86_64" or platform_machine == "ppc64le" or platform_machine == "aarch64") and python_version >= "3"
+greenlet==3.0.3; (platform_machine == "win32" or platform_machine == "WIN32" or platform_machine == "AMD64" or platform_machine == "amd64" or platform_machine == "x86_64" or platform_machine == "ppc64le" or platform_machine == "aarch64") and python_version < "3.13"
 gunicorn==22.0.0
 hupper==1.12.1
 idna==3.7
@@ -18,7 +18,7 @@ markdown-it-py==3.0.0
 markupsafe==2.1.5
 mdurl==0.1.2
 multidict==6.0.5
-packaging==24.0
+packaging==24.1
 pastedeploy==3.1.0
 pendulum==2.1.2
 plaster==1.1.2
@@ -35,13 +35,13 @@ python-dotenv==0.21.1
 pytzdata==2020.1
 rich==13.7.1
 rrdtool-bindings==0.2.0
-setuptools==70.0.0
+setuptools==70.1.1
 six==1.16.0
-sqlalchemy==1.4.52
+sqlalchemy==2.0.31
 structlog==23.3.0
 transaction==3.1.0
 translationstring==1.4
-typing-extensions==4.11.0
+typing-extensions==4.12.2
 venusian==3.1.0
 webob==1.8.7
 wired==0.4

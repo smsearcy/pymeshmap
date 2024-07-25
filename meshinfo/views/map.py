@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 
 import attrs
-import sqlalchemy as sa
 from pyramid.request import Request
 from pyramid.view import view_config
+from sqlalchemy import sql
 from sqlalchemy.orm import Session, aliased
 
 from ..config import AppConfig
@@ -95,8 +95,8 @@ class GeoNode:
     id: int
     name: str
     band: Band
-    latitude: float
-    longitude: float
+    latitude: float | None
+    longitude: float | None
     layer: NodeLayer
 
     @classmethod
@@ -137,10 +137,10 @@ class GeoLink:
     type: LinkType
     status: LinkStatus
     cost: float
-    start_latitude: float
-    start_longitude: float
-    end_latitude: float
-    end_longitude: float
+    start_latitude: float | None
+    start_longitude: float | None
+    end_latitude: float | None
+    end_longitude: float | None
     layer: LinkLayer
 
     @property
@@ -274,23 +274,22 @@ def network_map(request: Request):
 def map_data(request: Request):
     """Generate node and link data as GeoJSON to be loaded into Leaflet."""
     dbsession: Session = request.dbsession
-    node_query = dbsession.query(Node).filter(
+    node_query = sql.select(Node).where(
         Node.status != NodeStatus.INACTIVE,
-        Node.latitude != sa.null(),
-        Node.longitude != sa.null(),
+        Node.latitude != sql.null(),
+        Node.longitude != sql.null(),
     )
     source_nodes = aliased(Node, node_query.subquery())
     dest_nodes = aliased(Node, node_query.subquery())
 
-    nodes = node_query.all()
+    nodes = dbsession.scalars(node_query).all()
 
-    links = (
-        dbsession.query(Link)
+    links = dbsession.scalars(
+        sql.select(Link)
         .join(source_nodes, Link.source_id == source_nodes.id)
         .join(dest_nodes, Link.destination_id == dest_nodes.id)
-        .filter(Link.status != LinkStatus.INACTIVE)
-        .all()
-    )
+        .where(Link.status != LinkStatus.INACTIVE)
+    ).all()
 
     node_layers = {layer.key: layer for layer in _NODE_LAYERS}
     link_layers = {layer.key: layer for layer in _LINK_LAYERS}
@@ -322,7 +321,7 @@ def _calc_hue(value: float, *, red: float, green: float) -> int:
     return round(120 * percent)
 
 
-def _dedupe_links(links: list[Link]) -> Iterator[Link]:
+def _dedupe_links(links: Sequence[Link]) -> Iterator[Link]:
     """Filter out redundant tunnels and DTD links."""
     # while it is unlikely that two nodes are connected by both types, this is safer
     seen_tunnels = set()

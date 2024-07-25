@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pendulum
-import sqlalchemy as sa
+from sqlalchemy import sql
 
 from .historical import HistoricalStats
 from .models import CollectorStat, Link, Node, NodeError, session_scope
@@ -30,27 +30,27 @@ def main(
 
     with session_scope(dbsession_factory) as dbsession:
         print()
-        total_node_count = dbsession.query(Node).count()
-        nodes = dbsession.query(Node).filter(Node.last_seen < cutoff).all()
+        total_node_count = dbsession.scalar(
+            sql.select(sql.func.count()).select_from(Node)
+        )
+        nodes = dbsession.scalars(sql.select(Node).where(Node.last_seen < cutoff)).all()
         print(
             f"Identified {len(nodes):,d} nodes to purge (out of {total_node_count:,d})."
         )
         node_ids = [node.id for node in nodes]
-        links = (
-            dbsession.query(Link)
-            .filter(
-                sa.or_(Link.source_id.in_(node_ids), Link.destination_id.in_(node_ids))
+        links = dbsession.scalars(
+            sql.select(Link).where(
+                sql.or_(Link.source_id.in_(node_ids), Link.destination_id.in_(node_ids))
             )
-            .all()
-        )
+        ).all()
         print(f"Identified {len(links):,d} links to purge.")
-        stats = (
-            dbsession.query(CollectorStat)
-            .filter(CollectorStat.started_at < cutoff)
-            .all()
-        )
+        stats = dbsession.scalars(
+            sql.select(CollectorStat).where(CollectorStat.started_at < cutoff)
+        ).all()
         print(f"Identified {len(stats):,d} collector stats to purge.")
-        errors = dbsession.query(NodeError).filter(NodeError.timestamp < cutoff).all()
+        errors = dbsession.scalars(
+            sql.select(NodeError).where(NodeError.timestamp < cutoff)
+        ).all()
         print(f"Identified {len(errors):,d} node error details to purge.")
         print()
 

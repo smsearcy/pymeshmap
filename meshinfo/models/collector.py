@@ -1,31 +1,11 @@
+from __future__ import annotations
+
 import pendulum
-import sqlalchemy as sa
-from sqlalchemy.orm import relationship
+from sqlalchemy import JSON, ForeignKey, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..poller import PollingError
-from .meta import Base, PDateTime
-
-
-class CollectorStat(Base):
-    """Statistics from the collection process."""
-
-    __tablename__ = "collector_stat"
-
-    started_at = sa.Column(PDateTime(), primary_key=True)
-    finished_at = sa.Column(PDateTime(), default=pendulum.now, nullable=False)
-    node_count = sa.Column(sa.Integer, nullable=False)
-    link_count = sa.Column(sa.Integer, nullable=False)
-    error_count = sa.Column(sa.Integer, nullable=False)
-    polling_duration = sa.Column(sa.Float, nullable=False)
-    total_duration = sa.Column(sa.Float, nullable=False)
-    other_stats = sa.Column(sa.JSON, nullable=False)
-
-    node_errors = relationship(
-        "NodeError", foreign_keys="NodeError.timestamp", cascade="all, delete-orphan"
-    )
-
-    def __repr__(self):
-        return f"<models.CollectorStat(started_at={self.started_at})>"
+from .meta import Base
 
 
 class NodeError(Base):
@@ -33,10 +13,32 @@ class NodeError(Base):
 
     __tablename__ = "node_error"
 
-    timestamp = sa.Column(
-        PDateTime(), sa.ForeignKey("collector_stat.started_at"), primary_key=True
+    timestamp: Mapped[pendulum.DateTime] = mapped_column(
+        ForeignKey("collector_stat.started_at"), primary_key=True
     )
-    ip_address = sa.Column(sa.String(15), primary_key=True)
-    dns_name = sa.Column(sa.String(70), nullable=False)
-    error_type = sa.Column(sa.Enum(PollingError, native_enum=False), nullable=False)
-    details = sa.Column(sa.UnicodeText, nullable=False)
+    ip_address: Mapped[str] = mapped_column(String(15), primary_key=True)
+    dns_name: Mapped[str] = mapped_column(String(70))
+    error_type: Mapped[PollingError]
+    details: Mapped[str]
+
+
+class CollectorStat(Base):
+    """Statistics from the collection process."""
+
+    __tablename__ = "collector_stat"
+
+    started_at: Mapped[pendulum.DateTime] = mapped_column(primary_key=True)
+    finished_at: Mapped[pendulum.DateTime] = mapped_column(default=pendulum.now)
+    node_count: Mapped[int]
+    link_count: Mapped[int]
+    error_count: Mapped[int]
+    polling_duration: Mapped[float]
+    total_duration: Mapped[float]
+    other_stats: Mapped[dict] = mapped_column(JSON)
+
+    node_errors: Mapped[list[NodeError]] = relationship(
+        foreign_keys="NodeError.timestamp", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self):
+        return f"<models.CollectorStat(started_at={self.started_at})>"

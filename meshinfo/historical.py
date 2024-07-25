@@ -112,9 +112,7 @@ class HistoricalStats:
                     node.link_count,
                     len(node.services),
                     node.up_time_seconds,
-                    node.load_averages[0]
-                    if isinstance(node.load_averages, list)
-                    else None,
+                    node.load_averages[0] if node.load_averages is not None else None,
                     node.radio_link_count,
                     node.dtd_link_count,
                     node.tunnel_link_count,
