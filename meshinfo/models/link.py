@@ -1,9 +1,16 @@
+"""Database model(s) for representing links between nodes."""
+
+from typing import TYPE_CHECKING, Optional
+
 import pendulum
-import sqlalchemy as sa
-from sqlalchemy.orm import relationship
+from sqlalchemy import Enum, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..types import LinkId, LinkStatus, LinkType
-from .meta import Base, PDateTime
+from .meta import Base
+
+if TYPE_CHECKING:
+    from .node import Node
 
 
 class Link(Base):
@@ -11,35 +18,36 @@ class Link(Base):
 
     __tablename__ = "link"
 
-    source_id = sa.Column(sa.Integer, sa.ForeignKey("node.node_id"), primary_key=True)
-    destination_id = sa.Column(
-        sa.Integer, sa.ForeignKey("node.node_id"), primary_key=True
+    source_id: Mapped[int] = mapped_column(ForeignKey("node.node_id"), primary_key=True)
+    destination_id: Mapped[int] = mapped_column(
+        ForeignKey("node.node_id"), primary_key=True
     )
-    type = sa.Column(sa.Enum(LinkType, native_enum=False), primary_key=True)
-    status = sa.Column(sa.Enum(LinkStatus, native_enum=False), nullable=False)
-    last_seen = sa.Column(PDateTime(), nullable=False, default=pendulum.now)
+    type: Mapped[LinkType] = mapped_column(
+        Enum(LinkType, native_enum=False), primary_key=True
+    )
+    status: Mapped[LinkStatus]
+    last_seen: Mapped[pendulum.DateTime] = mapped_column(default=pendulum.now)
 
-    olsr_cost = sa.Column(sa.Float)
-    distance = sa.Column(sa.Float)
-    bearing = sa.Column(sa.Float)
+    olsr_cost: Mapped[float]
+    distance: Mapped[Optional[float]]
+    bearing: Mapped[Optional[float]]
 
-    signal = sa.Column(sa.Float)
-    noise = sa.Column(sa.Float)
-    tx_rate = sa.Column(sa.Float)
-    rx_rate = sa.Column(sa.Float)
-    quality = sa.Column(sa.Float)
-    neighbor_quality = sa.Column(sa.Float)
+    signal: Mapped[Optional[float]]
+    noise: Mapped[Optional[float]]
+    tx_rate: Mapped[Optional[float]]
+    rx_rate: Mapped[Optional[float]]
+    quality: Mapped[Optional[float]]
+    neighbor_quality: Mapped[Optional[float]]
 
-    created_at = sa.Column(PDateTime(), default=pendulum.now, nullable=False)
-    last_updated_at = sa.Column(
-        PDateTime(),
-        default=pendulum.now,
-        onupdate=pendulum.now,
-        nullable=False,
+    created_at: Mapped[pendulum.DateTime] = mapped_column(default=pendulum.now)
+    last_updated_at: Mapped[pendulum.DateTime] = mapped_column(
+        default=pendulum.now, onupdate=pendulum.now
     )
 
-    source = relationship("Node", foreign_keys="Link.source_id", back_populates="links")
-    destination = relationship("Node", foreign_keys="Link.destination_id")
+    source: Mapped["Node"] = relationship(
+        foreign_keys="Link.source_id", back_populates="links"
+    )
+    destination: Mapped["Node"] = relationship(foreign_keys="Link.destination_id")
 
     @property
     def signal_noise_ratio(self):

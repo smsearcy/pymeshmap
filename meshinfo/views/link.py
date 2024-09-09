@@ -24,15 +24,14 @@ def link_preview(request: Request):
     type_ = getattr(LinkType, request.matchdict["type"].upper())
     dbsession: Session = request.dbsession
 
-    link = (
-        dbsession.query(Link)
-        .options(
+    link = dbsession.get(
+        Link,
+        (source_id, destination_id, type_),
+        options=[
             joinedload(Link.source).load_only(Node.name),
             joinedload(Link.destination).load_only(Node.name),
-        )
-        .get((source_id, destination_id, type_))
+        ],
     )
-
     if link is None:
         raise HTTPNotFound("Sorry, the specified link could not be found")
 
@@ -61,13 +60,13 @@ def link_graphs(request: Request):
     dbsession: Session = request.dbsession
     graph = request.matchdict["name"]
 
-    link = (
-        dbsession.query(Link)
-        .options(
+    link = dbsession.get(
+        Link,
+        (source_id, destination_id, type_),
+        options=[
             load_only(Link.source_id, Link.destination_id),
             joinedload(Link.destination).load_only(Node.name),
-        )
-        .get((source_id, destination_id, type_))
+        ],
     )
     if link is None:
         raise HTTPNotFound("Sorry, the specified link could not be found")
@@ -89,21 +88,20 @@ class LinkGraphs:
         type_ = getattr(LinkType, request.matchdict["type"].upper())
         dbsession: Session = request.dbsession
 
-        self.link = (
-            dbsession.query(Link)
-            .options(
+        link = dbsession.get(
+            Link,
+            (source_id, destination_id, type_),
+            options=[
                 load_only(Link.source_id, Link.destination_id, Link.type),
                 joinedload(Link.destination).load_only(Node.name),
-            )
-            .get((source_id, destination_id, type_))
+            ],
         )
-        if self.link is None:
+        if link is None:
             raise HTTPNotFound("Sorry, the specified link could not be found")
 
+        self.link = link
         self.name_in_title = asbool(request.GET.get("name_in_title", False))
-
         self.graph_params = schema.graph_params(request.GET)
-
         self.stats: HistoricalStats = request.find_service(HistoricalStats)
 
     @view_config(match_param="name=cost")

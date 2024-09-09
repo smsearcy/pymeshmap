@@ -291,6 +291,7 @@ def save_nodes(
     """
     if count is None:
         count = defaultdict(int)
+    timestamp = pendulum.now()
     node_models = []
     for node in nodes:
         count["nodes: total"] += 1
@@ -311,7 +312,7 @@ def save_nodes(
                 logger.debug("Updated node in database", model=model)
             node_models.append(model)
 
-            model.last_seen = pendulum.now()
+            model.last_seen = timestamp
             model.status = NodeStatus.ACTIVE
 
             for model_attr, node_attr in MODEL_TO_SYSINFO_ATTRS.items():
@@ -393,6 +394,7 @@ def save_links(
         for node in dbsession.query(Node).filter(Node.status == NodeStatus.ACTIVE)
     }
 
+    timestamp = pendulum.now()
     link_models = []
     for link in links:
         count["links: total"] += 1
@@ -425,7 +427,7 @@ def save_links(
         link_models.append(model)
 
         model.status = LinkStatus.CURRENT
-        model.last_seen = pendulum.now()
+        model.last_seen = timestamp
 
         for attribute in [
             "type",

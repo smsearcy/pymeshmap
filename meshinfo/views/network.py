@@ -3,6 +3,7 @@ from pyramid.httpexceptions import HTTPBadRequest, HTTPNotFound
 from pyramid.request import Request
 from pyramid.response import Response
 from pyramid.view import view_config, view_defaults
+from sqlalchemy import sql
 from sqlalchemy.orm import Session, subqueryload
 
 from ..historical import HistoricalStats
@@ -65,12 +66,11 @@ def network_errors(request: Request):
 
     marked_row = request.GET.get("highlight")
 
-    collector = (
-        dbsession.query(CollectorStat)
+    collector = dbsession.execute(
+        sql.select(CollectorStat)
         .options(subqueryload(CollectorStat.node_errors))
-        .filter(CollectorStat.started_at == timestamp)
-        .one_or_none()
-    )
+        .where(CollectorStat.started_at == timestamp)
+    ).scalar_one_or_none()
     if collector is None:
         raise HTTPNotFound(f"No collection statistics available for {timestamp}")
 

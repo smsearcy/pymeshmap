@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pendulum
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.schema import MetaData
 from sqlalchemy.types import TIMESTAMP, TypeDecorator
 
@@ -17,14 +17,13 @@ NAMING_CONVENTION = {
 }
 
 metadata = MetaData(naming_convention=NAMING_CONVENTION)
-Base = declarative_base(metadata=metadata)
 
 
 class PDateTime(TypeDecorator):
     """SQLAlchemy type to wrap `pendulum.datetime` instead of `datetime.datetime`."""
 
     impl = TIMESTAMP(timezone=True)
-    cache_ok = False
+    cache_ok = True
 
     def process_bind_param(self, value, dialect):
         if value is not None:
@@ -37,5 +36,12 @@ class PDateTime(TypeDecorator):
     def process_result_value(self, value, dialect):
         if value is not None:
             value = pendulum.instance(value)
-
         return value
+
+
+class Base(DeclarativeBase):
+    metadata = metadata
+
+    type_annotation_map = {
+        pendulum.DateTime: PDateTime,
+    }

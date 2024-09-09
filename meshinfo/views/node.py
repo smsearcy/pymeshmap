@@ -1,10 +1,12 @@
 from operator import attrgetter
+from typing import Any
 
 from pyramid.httpexceptions import HTTPNotFound
 from pyramid.request import Request
 from pyramid.response import Response
 from pyramid.settings import asbool
 from pyramid.view import view_config, view_defaults
+from sqlalchemy import sql
 from sqlalchemy.orm import Session, joinedload, load_only
 
 from ..aredn import LinkType, VersionChecker
@@ -22,7 +24,7 @@ def node_detail(request: Request):
     dbsession: Session = request.dbsession
     version_checker: VersionChecker = request.find_service(VersionChecker)
 
-    node = dbsession.query(Node).get(node_id)
+    node = dbsession.get(Node, node_id)
 
     if node is None:
         raise HTTPNotFound("Sorry, the specified node could not be found")
@@ -30,15 +32,15 @@ def node_detail(request: Request):
     firmware_status = version_checker.firmware(node.firmware_version)
     api_status = version_checker.api(node.api_version)
 
-    query = (
-        dbsession.query(Link)
-        .options(joinedload(Link.destination).load_only("display_name"))
+    stmt = (
+        sql.select(Link)
+        .options(joinedload(Link.destination).load_only(Node.display_name))
         .filter(
             Link.source_id == node.id,
             Link.status != LinkStatus.INACTIVE,
         )
     )
-    links = query.all()
+    links = dbsession.execute(stmt).scalars()
 
     graphs_by_link_type = {
         LinkType.RF: ("cost", "quality", "snr"),
@@ -58,15 +60,13 @@ def node_detail(request: Request):
 
 
 @view_config(route_name="node-json", renderer="json")
-def node_json(request: Request):
+def node_json(request: Request) -> dict:
     """Dump most recent sysinfo.json for a node."""
 
     node_id = int(request.matchdict["id"])
     dbsession: Session = request.dbsession
 
-    node: Node = dbsession.query(Node).get(node_id)
-
-    if node is None:
+    if not (node := dbsession.get(Node, node_id)):
         raise HTTPNotFound("Sorry, the specified node could not be found")
 
     return node.system_info
@@ -83,29 +83,25 @@ def node_preview(request: Request):
     node_id = int(request.matchdict["id"])
     dbsession: Session = request.dbsession
 
-    node: Node = dbsession.query(Node).get(node_id)
-
-    if node is None:
+    if not (node := dbsession.get(Node, node_id)):
         raise HTTPNotFound("Sorry, the specified node could not be found")
 
-    query = (
-        dbsession.query(Link)
-        .options(joinedload(Link.destination).load_only("display_name"))
-        .filter(
+    current_links = dbsession.scalars(
+        sql.select(Link)
+        .options(joinedload(Link.destination).load_only(Node.display_name))
+        .where(
             Link.source_id == node.id,
             Link.status == LinkStatus.CURRENT,
         )
-    )
-    current_links = query.all()
-    query = (
-        dbsession.query(Link)
-        .options(joinedload(Link.destination).load_only("display_name"))
-        .filter(
+    ).all()
+    recent_links = dbsession.scalars(
+        sql.select(Link)
+        .options(joinedload(Link.destination).load_only(Node.display_name))
+        .where(
             Link.source_id == node.id,
             Link.status == LinkStatus.RECENT,
         )
-    )
-    recent_links = query.all()
+    ).all()
 
     return {
         "node": node,
@@ -119,14 +115,14 @@ def node_preview(request: Request):
 
 
 @view_config(route_name="node-graphs", renderer="pages/node-graphs.jinja2")
-def node_graphs(request: Request):
+def node_graphs(request: Request) -> dict[str, Any]:
     """Display graphs of particular data for a node over different timeframes."""
 
     node_id = int(request.matchdict["id"])
     graph = request.matchdict["name"]
     dbsession: Session = request.dbsession
 
-    node = dbsession.query(Node).options(load_only("display_name", "id")).get(node_id)
+    node = dbsession.get(Node, node_id, options=[load_only(Node.display_name, Node.id)])
 
     return {
         "node": node,
@@ -143,11 +139,13 @@ class NodeGraphs:
         node_id = int(request.matchdict["id"])
         dbsession: Session = request.dbsession
 
-        self.node = (
-            dbsession.query(Node).options(load_only(Node.id, Node.name)).get(node_id)
-        )
-        if self.node is None:
+        if not (
+            node := dbsession.get(
+                Node, node_id, options=[load_only(Node.id, Node.name)]
+            )
+        ):
             raise HTTPNotFound("Sorry, the specified node could not be found")
+        self.node = node
 
         self.graph_params = schema.graph_params(request.GET)
         self.name_in_title = asbool(request.GET.get("name_in_title", False))
@@ -155,7 +153,7 @@ class NodeGraphs:
         self.stats: HistoricalStats = request.find_service(HistoricalStats)
 
     @view_config(match_param="name=links")
-    def links(self):
+    def links(self) -> Response:
         title_parts = (
             self.node.name.lower() if self.name_in_title else "",
             "links",
@@ -169,7 +167,7 @@ class NodeGraphs:
         )
 
     @view_config(match_param="name=load")
-    def load(self):
+    def load(self) -> Response:
         title_parts = (
             self.node.name.lower() if self.name_in_title else "",
             "load",
@@ -183,7 +181,7 @@ class NodeGraphs:
         )
 
     @view_config(match_param="name=uptime")
-    def uptime(self):
+    def uptime(self) -> Response:
         title_parts = (
             self.node.name.lower() if self.name_in_title else "",
             "uptime",
